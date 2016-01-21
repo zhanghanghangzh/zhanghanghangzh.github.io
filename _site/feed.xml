@@ -4,19 +4,151 @@
     <title>about me</title>
     <description>a man 
 </description>
-    <link>http://zhanghanghangzh.github.io/</link>
-    <atom:link href="http://zhanghanghangzh.github.io/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Fri, 15 Jan 2016 14:16:43 +0800</pubDate>
-    <lastBuildDate>Fri, 15 Jan 2016 14:16:43 +0800</lastBuildDate>
+    <link>http://localhost:4000/</link>
+    <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
+    <pubDate>Thu, 21 Jan 2016 15:59:10 +0800</pubDate>
+    <lastBuildDate>Thu, 21 Jan 2016 15:59:10 +0800</lastBuildDate>
     <generator>Jekyll v3.0.1</generator>
     
       <item>
-        <title>Welcome to Jekyll!</title>
-        <description>&lt;p&gt;You’ll find this post in your &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory. Go ahead and edit it and re-build the site to see your changes. You can rebuild the site in many different ways, but the most common way is to run &lt;code class=&quot;highlighter-rouge&quot;&gt;jekyll serve&lt;/code&gt;, which launches a web server and auto-regenerates your site when a file is updated.&lt;/p&gt;
+        <title>nginx-ssl卸载</title>
+        <description>&lt;p&gt;转载自 &lt;a href=&quot;http://www.iyunv.com/thread-52331-1-1.html&quot;&gt;博客&lt;/a&gt;&lt;/p&gt;
 
-&lt;p&gt;To add new posts, simply add a file in the &lt;code class=&quot;highlighter-rouge&quot;&gt;_posts&lt;/code&gt; directory that follows the convention &lt;code class=&quot;highlighter-rouge&quot;&gt;YYYY-MM-DD-name-of-post.ext&lt;/code&gt; and includes the necessary front matter. Take a look at the source for this post to get an idea about how it works.&lt;/p&gt;
+&lt;h1 id=&quot;section&quot;&gt;一.场景简介&lt;/h1&gt;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;某些场景中，我们需要保证业务的安全可靠，因此难免需要使用HTTPS加密保护数据，但是除了在公网做SSL加密之外，内网之间的传输加密倒是意义不大，因此nginx的SSL加密负载就可以派上用场了
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
-&lt;p&gt;Jekyll also offers powerful support for code snippets:&lt;/p&gt;
+&lt;h1 id=&quot;section-1&quot;&gt;二.拓扑&lt;/h1&gt;
+&lt;p&gt;&lt;img src=&quot;http://localhost:4000/static/imgs/nginx-tuopu.jpg&quot; alt=&quot;拓扑图&quot; /&gt;&lt;/p&gt;
+
+&lt;h1 id=&quot;section-2&quot;&gt;三. 配置&lt;/h1&gt;
+
+&lt;p&gt;1.配置自签名CA，并且给服务器证书签名&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; 配置CA     #cd  /etc/pki/CA
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;(1).为CA生成i一个私钥
+      #（umask 077；openssl genrsa -out private/cakey.pem 2048）&lt;/p&gt;
+
+&lt;p&gt;(2).生成自签名证书
+      openssl req -new -x509 -key private/cakey.pem  -out cacert.pem -days 365
+      touch index.txt
+      echo 01&amp;gt;serial&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;申请证书，并签名    # cd  /etc/nginx/     # mkdir ssl    # cd ssl    1.用户生成自己的私钥  
+  #（umask 077；openssl genrsa 1024 &amp;gt;nginx.pri)    2.生成证书签署请求
+  # openssl req -new -key nginx.pri -out nginx.csr    3.CA为签署请求签名
+  # openssl ca -in nginx.csr -out nginx.crt -days 365
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;2.开启路由转发
+  # vi /etc/sysctl.conf
+      net.ipv4.ip_forward = 1
+  # sysctl -p&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;3.配置nginx的配置文件 /etc/nginx.conf
+#user  nobody;
+worker_processes  3;
+
+#error_log  logs/error.log;
+#error_log  logs/error.log  notice;
+#error_log  logs/error.log  info;
+
+#pid        logs/nginx.pid;
+
+
+events {
+    use epoll;
+    worker_connections  1024;
+}
+
+http {
+    include       mime.types;
+    default_type  application/octet-stream;
+
+    #log_format  main  &#39;$remote_addr - $remote_user [$time_local] &quot;$request&quot; &#39;
+    #                  &#39;$status $body_bytes_sent &quot;$http_referer&quot; &#39;
+    #                  &#39;&quot;$http_user_agent&quot; &quot;$http_x_forwarded_for&quot;&#39;;
+
+    #access_log  logs/access.log  main;
+
+    sendfile        on;
+    #tcp_nopush     on;
+
+    #keepalive_timeout  0;
+    keepalive_timeout  65;
+
+    #gzip  on;
+
+    server {
+        listen       80;
+        server_name  localhost;
+
+        #charset koi8-r;
+
+        #access_log  logs/host.access.log  main;
+        location / {
+            root   /var/www/html;
+            index  index.html index.htm;
+        }
+
+        #error_page  404              /404.html;
+
+        error_page   500 502 503 504  /50x.html;
+        location = /50x.html {
+            root   html;
+        }
+        }
+
+   ###################具体配置#################################     
+upstream https {            #定义upstream模块
+   least_conn;               #调度算法
+   server  192.168.112.131:80 weight=2  max_fails=4  fail_timeout=1; #
+   server  127.0.0.1:80  backup;  #本地作为备份服务器
+}
+    # HTTPS server
+    #
+    server {
+        listen       443 ssl;
+        server_name  localhost;
+
+        ssl_certificate      ssl/nginx.crt;  #证书位置
+        ssl_certificate_key  ssl/nginx.pri;  #私钥位置
+
+        ssl_session_cache    shared:SSL:1m;
+        ssl_session_timeout  5m;
+
+        ssl_ciphers  HIGH:!aNULL:!MD5;
+        ssl_prefer_server_ciphers  on;
+
+        location / {
+            proxy_pass    # 反向负载
+            add_header Real-Server $upstream_addr;  ##响应报文添加rs地址
+        }
+    }
+
+}
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;4.配置RS服务器
+1
+略&lt;/p&gt;
+</description>
+        <pubDate>Thu, 21 Jan 2016 00:00:00 +0800</pubDate>
+        <link>http://localhost:4000/2016/01/21/nginx-ssl%E5%8D%B8%E8%BD%BD.html</link>
+        <guid isPermaLink="true">http://localhost:4000/2016/01/21/nginx-ssl%E5%8D%B8%E8%BD%BD.html</guid>
+        
+        
+      </item>
+    
+      <item>
+        <title>Welcome to Hang&#39;s Home!</title>
+        <description>&lt;p&gt;My Page&lt;/p&gt;
 
 &lt;figure class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-ruby&quot; data-lang=&quot;ruby&quot;&gt;&lt;span class=&quot;k&quot;&gt;def&lt;/span&gt; &lt;span class=&quot;nf&quot;&gt;print_hi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
   &lt;span class=&quot;nb&quot;&gt;puts&lt;/span&gt; &lt;span class=&quot;s2&quot;&gt;&quot;Hi, &lt;/span&gt;&lt;span class=&quot;si&quot;&gt;#{&lt;/span&gt;&lt;span class=&quot;nb&quot;&gt;name&lt;/span&gt;&lt;span class=&quot;si&quot;&gt;}&lt;/span&gt;&lt;span class=&quot;s2&quot;&gt;&quot;&lt;/span&gt;
@@ -24,12 +156,10 @@
 &lt;span class=&quot;n&quot;&gt;print_hi&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;(&lt;/span&gt;&lt;span class=&quot;s1&quot;&gt;&#39;Tom&#39;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;)&lt;/span&gt;
 &lt;span class=&quot;c1&quot;&gt;#=&amp;gt; prints &#39;Hi, Tom&#39; to STDOUT.&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/figure&gt;
 
-&lt;p&gt;Check out the &lt;a href=&quot;http://jekyllrb.com/docs/home&quot;&gt;Jekyll docs&lt;/a&gt; for more info on how to get the most out of Jekyll. File all bugs/feature requests at &lt;a href=&quot;https://github.com/jekyll/jekyll&quot;&gt;Jekyll’s GitHub repo&lt;/a&gt;. If you have questions, you can ask them on &lt;a href=&quot;https://talk.jekyllrb.com/&quot;&gt;Jekyll Talk&lt;/a&gt;.&lt;/p&gt;
-
 </description>
         <pubDate>Fri, 15 Jan 2016 13:36:58 +0800</pubDate>
-        <link>http://zhanghanghangzh.github.io/jekyll/update/2016/01/15/welcome-to-jekyll.html</link>
-        <guid isPermaLink="true">http://zhanghanghangzh.github.io/jekyll/update/2016/01/15/welcome-to-jekyll.html</guid>
+        <link>http://localhost:4000/jekyll/update/2016/01/15/welcome-to-jekyll.html</link>
+        <guid isPermaLink="true">http://localhost:4000/jekyll/update/2016/01/15/welcome-to-jekyll.html</guid>
         
         
         <category>jekyll</category>
