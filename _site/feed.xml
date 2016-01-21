@@ -6,8 +6,8 @@
 </description>
     <link>http://localhost:4000/</link>
     <atom:link href="http://localhost:4000/feed.xml" rel="self" type="application/rss+xml"/>
-    <pubDate>Thu, 21 Jan 2016 15:59:10 +0800</pubDate>
-    <lastBuildDate>Thu, 21 Jan 2016 15:59:10 +0800</lastBuildDate>
+    <pubDate>Thu, 21 Jan 2016 16:12:12 +0800</pubDate>
+    <lastBuildDate>Thu, 21 Jan 2016 16:12:12 +0800</lastBuildDate>
     <generator>Jekyll v3.0.1</generator>
     
       <item>
@@ -15,6 +15,7 @@
         <description>&lt;p&gt;转载自 &lt;a href=&quot;http://www.iyunv.com/thread-52331-1-1.html&quot;&gt;博客&lt;/a&gt;&lt;/p&gt;
 
 &lt;h1 id=&quot;section&quot;&gt;一.场景简介&lt;/h1&gt;
+
 &lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;某些场景中，我们需要保证业务的安全可靠，因此难免需要使用HTTPS加密保护数据，但是除了在公网做SSL加密之外，内网之间的传输加密倒是意义不大，因此nginx的SSL加密负载就可以派上用场了
 &lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
@@ -26,35 +27,65 @@
 
 &lt;p&gt;1.配置自签名CA，并且给服务器证书签名&lt;/p&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; 配置CA     #cd  /etc/pki/CA
+&lt;p&gt;配置CA&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt; #cd  /etc/pki/CA
 &lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 
-&lt;p&gt;(1).为CA生成i一个私钥
-      #（umask 077；openssl genrsa -out private/cakey.pem 2048）&lt;/p&gt;
+&lt;p&gt;(1).为CA生成一个私钥&lt;/p&gt;
 
-&lt;p&gt;(2).生成自签名证书
-      openssl req -new -x509 -key private/cakey.pem  -out cacert.pem -days 365
-      touch index.txt
-      echo 01&amp;gt;serial&lt;/p&gt;
-
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;申请证书，并签名    # cd  /etc/nginx/     # mkdir ssl    # cd ssl    1.用户生成自己的私钥  
-  #（umask 077；openssl genrsa 1024 &amp;gt;nginx.pri)    2.生成证书签署请求
-  # openssl req -new -key nginx.pri -out nginx.csr    3.CA为签署请求签名
-  # openssl ca -in nginx.csr -out nginx.crt -days 365
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  #（umask 077；openssl genrsa -out private/cakey.pem 2048）
 &lt;/code&gt;&lt;/pre&gt;
 &lt;/div&gt;
 
-&lt;p&gt;2.开启路由转发
-  # vi /etc/sysctl.conf
+&lt;p&gt;(2).生成自签名证书&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  openssl req -new -x509 -key private/cakey.pem  -out cacert.pem -days 365
+  touch index.txt
+  echo 01&amp;gt;serial
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;申请证书，并签名&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;   # cd  /etc/nginx/ 
+   # mkdir ssl
+   # cd ssl
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;1.用户生成自己的私钥&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  #（umask 077；openssl genrsa 1024 &amp;gt;nginx.pri)
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;2.生成证书签署请求&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  # openssl req -new -key nginx.pri -out nginx.csr
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;3.CA为签署请求签名&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  # openssl ca -in nginx.csr -out nginx.crt -days 365
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
+
+&lt;p&gt;2.开启路由转发&lt;/p&gt;
+
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;  # vi /etc/sysctl.conf
       net.ipv4.ip_forward = 1
-  # sysctl -p&lt;/p&gt;
+  # sysctl -p
+&lt;/code&gt;&lt;/pre&gt;
+&lt;/div&gt;
 
-&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;3.配置nginx的配置文件 /etc/nginx.conf
-#user  nobody;
-worker_processes  3;
+&lt;p&gt;3.配置nginx的配置文件 /etc/nginx.conf
+    #user  nobody;
+    worker_processes  3;&lt;/p&gt;
 
-#error_log  logs/error.log;
+&lt;div class=&quot;highlighter-rouge&quot;&gt;&lt;pre class=&quot;highlight&quot;&gt;&lt;code&gt;#error_log  logs/error.log;
 #error_log  logs/error.log  notice;
 #error_log  logs/error.log  info;
 

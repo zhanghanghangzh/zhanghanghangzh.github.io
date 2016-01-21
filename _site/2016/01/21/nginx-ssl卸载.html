@@ -65,6 +65,7 @@
     <p>转载自 <a href="http://www.iyunv.com/thread-52331-1-1.html">博客</a></p>
 
 <h1 id="section">一.场景简介</h1>
+
 <div class="highlighter-rouge"><pre class="highlight"><code>某些场景中，我们需要保证业务的安全可靠，因此难免需要使用HTTPS加密保护数据，但是除了在公网做SSL加密之外，内网之间的传输加密倒是意义不大，因此nginx的SSL加密负载就可以派上用场了
 </code></pre>
 </div>
@@ -76,35 +77,65 @@
 
 <p>1.配置自签名CA，并且给服务器证书签名</p>
 
-<div class="highlighter-rouge"><pre class="highlight"><code> 配置CA     #cd  /etc/pki/CA
+<p>配置CA</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code> #cd  /etc/pki/CA
 </code></pre>
 </div>
 
-<p>(1).为CA生成i一个私钥
-      #（umask 077；openssl genrsa -out private/cakey.pem 2048）</p>
+<p>(1).为CA生成一个私钥</p>
 
-<p>(2).生成自签名证书
-      openssl req -new -x509 -key private/cakey.pem  -out cacert.pem -days 365
-      touch index.txt
-      echo 01&gt;serial</p>
-
-<div class="highlighter-rouge"><pre class="highlight"><code>申请证书，并签名    # cd  /etc/nginx/     # mkdir ssl    # cd ssl    1.用户生成自己的私钥  
-  #（umask 077；openssl genrsa 1024 &gt;nginx.pri)    2.生成证书签署请求
-  # openssl req -new -key nginx.pri -out nginx.csr    3.CA为签署请求签名
-  # openssl ca -in nginx.csr -out nginx.crt -days 365
+<div class="highlighter-rouge"><pre class="highlight"><code>  #（umask 077；openssl genrsa -out private/cakey.pem 2048）
 </code></pre>
 </div>
 
-<p>2.开启路由转发
-  # vi /etc/sysctl.conf
+<p>(2).生成自签名证书</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>  openssl req -new -x509 -key private/cakey.pem  -out cacert.pem -days 365
+  touch index.txt
+  echo 01&gt;serial
+</code></pre>
+</div>
+
+<p>申请证书，并签名</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>   # cd  /etc/nginx/ 
+   # mkdir ssl
+   # cd ssl
+</code></pre>
+</div>
+
+<p>1.用户生成自己的私钥</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>  #（umask 077；openssl genrsa 1024 &gt;nginx.pri)
+</code></pre>
+</div>
+
+<p>2.生成证书签署请求</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>  # openssl req -new -key nginx.pri -out nginx.csr
+</code></pre>
+</div>
+
+<p>3.CA为签署请求签名</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>  # openssl ca -in nginx.csr -out nginx.crt -days 365
+</code></pre>
+</div>
+
+<p>2.开启路由转发</p>
+
+<div class="highlighter-rouge"><pre class="highlight"><code>  # vi /etc/sysctl.conf
       net.ipv4.ip_forward = 1
-  # sysctl -p</p>
+  # sysctl -p
+</code></pre>
+</div>
 
-<div class="highlighter-rouge"><pre class="highlight"><code>3.配置nginx的配置文件 /etc/nginx.conf
-#user  nobody;
-worker_processes  3;
+<p>3.配置nginx的配置文件 /etc/nginx.conf
+    #user  nobody;
+    worker_processes  3;</p>
 
-#error_log  logs/error.log;
+<div class="highlighter-rouge"><pre class="highlight"><code>#error_log  logs/error.log;
 #error_log  logs/error.log  notice;
 #error_log  logs/error.log  info;
 
